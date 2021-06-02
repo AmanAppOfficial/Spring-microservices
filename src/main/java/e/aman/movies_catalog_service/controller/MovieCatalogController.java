@@ -15,40 +15,45 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+
 import e.aman.movies_catalog_service.model.Movie;
 import e.aman.movies_catalog_service.model.MovieModel;
 import e.aman.movies_catalog_service.model.Rating;
+import e.aman.movies_catalog_service.service.MovieInfoService;
+import e.aman.movies_catalog_service.service.UserRatingService;
 
 @RestController
 @RequestMapping("/catalog") 
 public class MovieCatalogController {
 	
+	@Autowired 
+	private MovieInfoService movieInfoService;
+	
 	@Autowired
-	private RestTemplate restTemplate;
+	private UserRatingService userRatingService;
+
 
 	@RequestMapping("/{userId}")
 	public List<MovieModel> getCatalog(@PathVariable("userId") String userId){
 		
 		List<MovieModel> movieModelList = new ArrayList<>();
-		
-		try {
-			ResponseEntity<List<Rating>> rateResponse = restTemplate.exchange("http://ratings-data-service/raringsdata/users/" + userId, HttpMethod.GET, null,
-					new ParameterizedTypeReference<List<Rating>>() {
-		            });
+	
+		ResponseEntity<List<Rating>> rateResponse = userRatingService.getRatings(userId);
 				
 			 List<Rating> ratings = rateResponse.getBody();
 			 for(Rating rating : ratings) {
-				 Movie m  = restTemplate.getForObject("http://movie-info-services/movies/" + rating.getMovieId(), Movie.class);
-					movieModelList.add(new MovieModel(m.getMovieName() , "Test description" , rating.getRating()));
+				 Movie m = movieInfoService.getMovies(rating);
+				 movieModelList.add(new MovieModel(m.getMovieName() , "" , rating.getRating()));
 			 }
-		}
-		catch(Exception e) {
-			System.out.print(e.getMessage());
-		}
 
 		 return movieModelList;
 		
 		
 	}
+	
+	
+	
+	
 	
 }
